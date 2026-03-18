@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0f0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      background: #9B59B6;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(155,89,182,0.6);
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #c9a0dc;
+    }
+    .info {
+      background: #16213e;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .label { color: #8888aa; }
+    .value { color: #e0e0f0; }
+    button#exportBtn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #9B59B6, #6C3483);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    button#exportBtn:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: scale(0.99);
+    }
+    button#exportBtn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 8px;
+      font-size: 12px;
+      text-align: center;
+      min-height: 18px;
+    }
+    #status.success { color: #6fcf97; }
+    #status.error { color: #eb5757; }
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 10px;
+      color: #5a5a7a;
+    }
+    .version { color: #9B59B6; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="dot"></div>
+    <h1>Claude Chat Exporter 💜</h1>
+  </div>
+
+  <div class="info" id="chatInfo">
+    <div><span class="label">检测中...</span></div>
+  </div>
+
+  <button id="exportBtn" disabled>导出为 Markdown</button>
+  <div id="status"></div>
+  <div class="footer">ProjectD · Auto Memorizer Pipeline · <span class="version">v0.4.0</span></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
