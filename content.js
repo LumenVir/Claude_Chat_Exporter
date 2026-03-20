@@ -1,15 +1,15 @@
 // content.js
-// Claude Chat Exporter v0.4.3 - Content Script
+// Claude Chat Exporter v0.4.4 - Content Script
 // ProjectD · Auto Memorizer Pipeline
 //
+// CHANGELOG v0.4.4:
+//   - FIX: File attachments (zip, html, md, pdf, etc.) now detected and exported as [附件: filename]
+//     Root cause: Same as image thumbnails — file thumbnails live OUTSIDE [data-testid="user-message"],
+//     in a sibling container at the turn level, using data-testid="file-thumbnail" with <h3> for filename.
+//   - extractHumanAttachments() now has 2 phases: file attachments first, then image attachments
+//   - File attachments: [附件: filename.ext], Image attachments: [图片: filename]
+//
 // CHANGELOG v0.4.3:
-//   - FIX #1: Human message image attachments now detected and exported as [图片: filename]
-//     Root cause: Image thumbnails live OUTSIDE the [data-testid="user-message"] element,
-//     in a sibling container higher up in the turn. The old code only looked inside user-message.
-//     New approach: When processing a human marker, walk up to find the turn container
-//     (div with class "mb-1 mt-6 group"), then search for image thumbnails within it.
-//   - NEW: extractHumanAttachments() function for finding image thumbnails in turn container
-//   - Preserved all v0.4.2 functionality (thinking titles, artifacts, ghost filter, etc.)
 //
 // ============================================================
 
@@ -157,21 +157,27 @@
   }
 
   // ============================================================
-  // HUMAN ATTACHMENTS EXTRACTION — v0.4.3 NEW
+  // HUMAN ATTACHMENTS EXTRACTION — v0.4.4
   //
-  // Image thumbnails in Claude's UI live OUTSIDE the user-message
-  // element. They are in a sibling container at the turn level:
+  // Both file attachments and image attachments live OUTSIDE the
+  // user-message element, in sibling containers at the turn level.
   //
+  // FILE ATTACHMENTS (zip, html, md, pdf, etc.):
+  //   div.mb-1.mt-6.group  (turn container)
+  //     ├── div.flex.flex-wrap.justify-end  (thumbnails row)
+  //     │     └── div.group/thumbnail[data-testid="file-thumbnail"]
+  //     │           └── button
+  //     │                 ├── h3 → filename (e.g. "report.pdf")
+  //     │                 └── p.uppercase → extension label
+  //     └── div[data-testid="user-message"]
+  //
+  // IMAGE ATTACHMENTS (jpg, png, etc.):
   //   div.mb-1.mt-6.group  (turn container)
   //     ├── div.flex.flex-wrap.justify-end  (thumbnails row)
   //     │     └── div.group/thumbnail
-  //     │           └── div[data-testid="filename.jpg"]
-  //     │                 └── button > img[alt="filename.jpg"]
-  //     └── div.flex.flex-col.items-end
-  //           └── div[data-testid="user-message"]
-  //
-  // Strategy: from the user-message element, walk up to find the
-  // turn container, then look for thumbnail images within it.
+  //     │           └── div[data-testid="filename.png"]
+  //     │                 └── button > img[alt="filename.png"]
+  //     └── div[data-testid="user-message"]
   // ============================================================
 
   function findTurnContainer(el) {
@@ -180,7 +186,6 @@
       if (!current.parentElement) break;
       current = current.parentElement;
       const cls = current.className || '';
-      // Turn container has classes like "mb-1 mt-6 group"
       if (cls.includes('mt-6') && cls.includes('group')) {
         return current;
       }
@@ -193,11 +198,33 @@
     const turnContainer = findTurnContainer(userMessageEl);
     if (!turnContainer) return attachments;
 
-    // Strategy 1: Find img elements inside thumbnail containers
+    // ---- Phase 1: File attachments (data-testid="file-thumbnail") ----
+    const fileThumbnails = turnContainer.querySelectorAll(
+      '[data-testid="file-thumbnail"]'
+    );
+    const detectedFiles = new Set();
+    for (const thumb of fileThumbnails) {
+      // The filename is in the <h3> element inside the thumbnail
+      const h3 = thumb.querySelector('h3');
+      if (h3) {
+        const filename = h3.textContent.trim();
+        if (filename && !detectedFiles.has(filename)) {
+          detectedFiles.add(filename);
+          attachments.push(`[附件: ${filename}]`);
+        }
+      }
+    }
+
+    // ---- Phase 2: Image attachments (same logic as v0.4.3) ----
+    // Strategy 2a: img elements inside thumbnail containers (non-file thumbnails)
     const thumbnailImgs = turnContainer.querySelectorAll(
       '.group\\/thumbnail img[alt], [class*="group/thumbnail"] img[alt]'
     );
     for (const img of thumbnailImgs) {
+      // Skip images that are inside file-thumbnail containers (already handled above)
+      const parentThumb = img.closest('[data-testid="file-thumbnail"]');
+      if (parentThumb) continue;
+
       const alt = img.getAttribute('alt') || '';
       if (alt) {
         attachments.push(`[图片: ${alt}]`);
@@ -206,29 +233,25 @@
       }
     }
 
-    // Strategy 2: If strategy 1 found nothing, look for data-testid with image extensions
-    if (attachments.length === 0) {
+    // Strategy 2b: data-testid with image extensions
+    if (!thumbnailImgs.length) {
       const imgTestIds = turnContainer.querySelectorAll(
         'div[data-testid$=".jpg"], div[data-testid$=".jpeg"], div[data-testid$=".png"], div[data-testid$=".gif"], div[data-testid$=".webp"]'
       );
       for (const div of imgTestIds) {
         const testId = div.getAttribute('data-testid') || '';
-        // Make sure this is above/before the user-message, not inside Dorothy's response
-        // Check that it's within the same turn container
         if (testId) {
           attachments.push(`[图片: ${testId}]`);
         }
       }
     }
 
-    // Strategy 3: Look for img tags with src containing "preview" or blob URLs
-    // (fallback for edge cases)
+    // Strategy 2c: fallback — large img tags with preview/blob src
     if (attachments.length === 0) {
       const allImgs = turnContainer.querySelectorAll('img[src]');
       for (const img of allImgs) {
         const src = img.getAttribute('src') || '';
         const alt = img.getAttribute('alt') || '';
-        // Skip tiny icons and UI elements
         const width = img.width || parseInt(img.style?.width) || 0;
         if (width > 50 || src.includes('preview') || src.includes('blob:')) {
           if (alt && /\.(jpg|jpeg|png|gif|webp)$/i.test(alt)) {
@@ -350,7 +373,7 @@
   }
 
   // ============================================================
-  // MAIN EXTRACTION — v0.4.3
+  // MAIN EXTRACTION — v0.4.4
   //
   // Same architecture as v0.4.2 (DOM-order marker collection),
   // with added attachment extraction for human messages.
@@ -397,7 +420,7 @@
         const timestamp = extractTimestamp(marker.el);
         const textContent = extractHumanContent(marker.el, td);
 
-        // v0.4.3: Extract image attachments from the turn container
+        // v0.4.4: Extract attachments (files + images) from the turn container
         const attachments = extractHumanAttachments(marker.el);
 
         // Combine: attachments first, then text content
@@ -451,7 +474,7 @@
     lines.push(`title: "${(meta.title || '未命名').replace(/"/g, '\\"')}"`);
     if (meta.project) lines.push(`project: "${meta.project}"`);
     lines.push(`exported: ${new Date().toISOString()}`);
-    lines.push(`exporter: Claude Chat Exporter v0.4.3`);
+    lines.push(`exporter: Claude Chat Exporter v0.4.4`);
     lines.push(`messages: ${meta.messageCount || messages.length}`);
     lines.push('---');
     lines.push('');
@@ -519,5 +542,5 @@
     return true;
   });
 
-  console.log('%c[Claude Chat Exporter] v0.4.3 loaded 💜', 'color: #9B59B6; font-weight: bold;');
+  console.log('%c[Claude Chat Exporter] v0.4.4 loaded 💜', 'color: #9B59B6; font-weight: bold;');
 })();

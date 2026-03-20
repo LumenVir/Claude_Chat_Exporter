@@ -13,6 +13,7 @@ One click, and your Claude conversation becomes a well-structured `.md` file wit
 - Thinking block titles preserved as blockquotes
 - Artifact placeholders (`[附件: title]`)
 - Image attachments detected (`[图片: filename]`)
+- File attachments detected (`[附件: filename.ext]`) — zip, html, md, pdf, etc.
 - Ghost element filtering (no phantom "ProjectD" messages)
 - HTML → Markdown conversion via [Turndown.js](https://github.com/mixmark-io/turndown)
 
@@ -49,6 +50,12 @@ Chat on claude.ai
 
 ## Version History
 
+### v0.4.4
+- **FIX**: File attachments (zip, html, md, pdf, etc.) now detected and exported as `[附件: filename.ext]`
+  - Root cause: same as image thumbnails — file thumbnails use `data-testid="file-thumbnail"` with `<h3>` for filename, outside `user-message`
+  - `extractHumanAttachments()` now has 2 phases: file attachments (Phase 1) then image attachments (Phase 2)
+  - Added deduplication via Set within each turn
+
 ### v0.4.3
 - **FIX**: Human message image attachments now correctly detected and exported as `[图片: filename]`
   - Root cause: image thumbnails live outside `[data-testid="user-message"]` in the DOM, in a sibling container at the turn level
@@ -74,12 +81,13 @@ Chat on claude.ai
 
 - **DOM-order extraction**: Messages are collected by finding all `[data-testid="user-message"]` (human) and `.font-claude-response` (assistant) elements, sorting by `compareDocumentPosition`, then extracting content from each.
 - **Image detection**: Human attachments are found by walking up from `user-message` to the turn container (`div.mt-6.group`), then searching for thumbnail `<img>` elements with image file extensions in `alt` or `data-testid`.
+- **File detection**: File attachments use `[data-testid="file-thumbnail"]` containers with `<h3>` for filename. GitHub project references are also captured.
 - **No external dependencies** beyond Turndown.js. Runs entirely in the browser, no data sent anywhere.
 
 ## Known Limitations
 
 - Images are detected but not downloaded — only filenames are preserved as `[图片: filename]`
-- File attachments (PDF, etc.) not yet handled
+- File attachments are detected but not downloaded — only filenames are preserved as `[附件: filename]`
 - Very long conversations may take a moment to process
 
 ## License

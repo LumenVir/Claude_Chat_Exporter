@@ -1,4 +1,4 @@
-// popup.js — Claude Chat Exporter v0.4.3
+// popup.js — Claude Chat Exporter v0.4.4
 const chatInfo = document.getElementById('chatInfo');
 const exportBtn = document.getElementById('exportBtn');
 const status = document.getElementById('status');
