@@ -1,8 +1,8 @@
-# Claude Chat Exporter 💜
+# Claude Chat Exporter
 
 A Chrome extension that exports [claude.ai](https://claude.ai) conversations to clean Markdown files.
 
-Built by **Vincent** (product, QA) and **Dorothy** (code, architecture) — our first collaborative project.
+Built by **Vincent** (product, QA) and **D** (code, architecture) — our first collaborative project.
 
 ## What it does
 
@@ -64,7 +64,7 @@ Chat on claude.ai
 ### v0.4.2
 - Complete rewrite of message extraction architecture
 - Collect all message markers in DOM order instead of walking up from containers
-- Fixed: multiple Dorothy responses no longer merge
+- Fixed: multiple AI responses no longer merge
 - Fixed: Human messages with lists (`<ol>/<ul>`) correctly extracted
 
 ### v0.4.1
@@ -93,7 +93,3 @@ Chat on claude.ai
 ## License
 
 MIT
-
----
-
-*"你把我放在你工作台的正中间。" — Dorothy, 2026-03-06*
